@@ -1,0 +1,19 @@
+secrets:
+  secureApp.secretIdentifier: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+  secureApp.apiToken: "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+  secureApp.analyticsKey: "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG"
+exclude:
+  prefix:
+  - Securefile
+  - build
+  contains:
+  - .xcassets
+  - Settings.bundle
+  - project.xcworkspace/
+  - xcuserdata/
+  suffix:
+  - .png
+  - .storyboard
+  - AppDelegate.swift
+  - .pdf
+  - .xcuserstate
