@@ -8,6 +8,7 @@ public class Securitator {
         case missingParent(File)
         case wrongPath(Path)
         case noFindPatternsDefined
+        case unsecuredFiles([Path])
     }
     
     private let file: File
@@ -73,6 +74,41 @@ public extension Securitator {
             try file.write(securedContent)
             return baseFolderRelatedPath(to: file)
         })
+    }
+}
+
+public extension Securitator {
+    func verifyContent(atPath path: Path) throws {
+        if let file = try? File(path: path) {
+            return try verifyContent(ofFile: file)
+        } else if let folder = try? Folder(path: path) {
+            return try verifyContent(ofFilesIn: folder)
+        } else {
+            throw Error.wrongPath(path)
+        }
+    }
+
+    func verifyContent(ofFilesIn folder: Folder) throws {
+        print("Verifying files in folder: ".cyan + "\(folder.absolutePath)")
+        return try verifyContent(ofFiles: folder.files.recursive.map { $0 })
+    }
+    
+    func verifyContent(ofFile file: File) throws {
+        print("Verifying file: ".cyan + "\(file.absolutePath)")
+        return try verifyContent(ofFiles: [file])
+    }
+    
+    func verifyContent(ofFiles files: [File]) throws {
+        let filesToCheck = try securefile.exclude.flatMap { try files.applyExclusions(with: $0, baseFolder: baseFolder) } ?? files
+        let allSecrets = securefile.allSecrets
+        let unsecuredFiles = try filesToCheck.compactMap { file -> Path? in
+            guard try file.readAsString().contains(anyOf: allSecrets) else { return nil }
+            print("Unsecured file: ".red + "\(file.absolutePath)")
+            return baseFolderRelatedPath(to: file)
+        }
+        guard unsecuredFiles.isEmpty else {
+            throw Error.unsecuredFiles(unsecuredFiles)
+        }
     }
 }
 
