@@ -1,5 +1,6 @@
 import Foundation
 import Files
+import ShellOut
 
 public typealias Path = String
 
@@ -30,8 +31,18 @@ public extension String {
         strings.first(where: { self.hasPrefix($0) }) != nil
     }
     
+    func removingPrefix(_ prefix: String) -> String {
+        guard hasPrefix(prefix) else { return self }
+        return String(dropFirst(prefix.count))
+    }
+    
     func hasAnySuffix(of strings: [String]) -> Bool {
         strings.first(where: { self.hasSuffix($0) }) != nil
+    }
+    
+    func removingSuffix(_ suffix: String) -> String {
+        guard hasSuffix(suffix) else { return self }
+        return String(dropLast(suffix.count))
     }
     
     func matches(for regex: NSRegularExpression) -> [String] {
@@ -50,8 +61,24 @@ public protocol AbsolutePath {
     var absolutePath: String { get }
 }
 
+public extension AbsolutePath {
+    func path(excludingPrefix prefix: String) -> String {
+        let absolutePath = self.absolutePath
+        guard absolutePath.hasPrefix(prefix) else {
+            return absolutePath
+        }
+
+        let index = absolutePath.index(absolutePath.startIndex, offsetBy: prefix.count)
+        return String(absolutePath[index...]).removingPrefix("/")
+    }
+}
+
 extension File: AbsolutePath {
     public var absolutePath: String { url.path }
+    
+    public init(baseFolder: Folder, path: String) throws {
+        try self.init(path: "\(baseFolder.absolutePath)/\(path)")
+    }
     
     public static func createIfNeeded(path: String) throws -> File {
         do {
@@ -59,7 +86,7 @@ extension File: AbsolutePath {
         } catch let locationError as LocationError {
             switch locationError.reason {
             case .missing:
-                FileManager.default.createFile(atPath: path, contents: Data(), attributes: [:])
+                try shellOut(to: "mkdir -p \"$(dirname \"\(path)\")\" || return; touch \"\(path)\";")
                 return try File(path: path)
             default:
                 throw locationError
