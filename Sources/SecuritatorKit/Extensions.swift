@@ -116,7 +116,7 @@ extension Folder: AbsolutePath {
 }
 
 extension Sequence where Element == File {
-    public func applyExclusions(with exclude: Securefile.Exclude, baseFolder: Folder) throws -> [File] {
+    public func applyExclusions(with exclude: Exclude, baseFolder: Folder) throws -> [File] {
         let prefixes = try exclude.prefix.compactMap { try $0.apply(prefixPath: baseFolder.absolutePath)?.absolutePath }
         return self
             .filter { !$0.absolutePath.hasAnyPrefix(of: prefixes) }

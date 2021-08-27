@@ -62,8 +62,14 @@ public extension Securitator {
         let filesToCheck = try securefile.exclude.flatMap { try files.applyExclusions(with: $0, baseFolder: baseFolder) } ?? files
         return SecurefileLock(secrets: try filesToCheck.compactMap { file -> Path? in
             let content = try file.readAsString()
-            let securedContent = securefile.secrets.reduce(content) { (content, secret) -> String in
-                content.replacingOccurrences(of: secret.value, with: secureKey(for: secret.key))
+            let securedContent = securefile.configs.reduce(content) { (content, config) -> String in
+                let contentAfter = config.otherKeys.reduce(into: content.replacingOccurrences(of: config.secret, with: secureKey(for: config.mainKey))) { (result, key) in
+                    result = result.replacingOccurrences(of: secureKey(for: key), with: secureKey(for: config.mainKey))
+                }   
+                if config.keys.count > 1 && contentAfter != content {
+                    print("'\(config.mainKey)' key used for securing, but there's more keys available for that secret: \(config.keys.dropFirst())".yellow)
+                }
+                return contentAfter
             }
             guard content != securedContent else {
                 guard securedContent.contains(securePrefix) else { return nil }
@@ -153,8 +159,10 @@ public extension Securitator {
         let allSecrets = securefile.allSecrets
         return SecurefileLock(secrets: try filesToCheck.compactMap { file -> Path? in
             let content = try file.readAsString()
-            let revealedContent = securefile.secrets.reduce(content) { (content, secret) -> String in
-                content.replacingOccurrences(of: secureKey(for: secret.key), with: secret.value)
+            let revealedContent = securefile.configs.reduce(content) { (content, config) -> String in
+                config.keys.reduce(content) { content, key in
+                    content.replacingOccurrences(of: secureKey(for: key), with: config.secret)
+                }
             }
             guard content != revealedContent else {
                 guard revealedContent.contains(anyOf: allSecrets) else { return nil }
